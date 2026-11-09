@@ -26,3 +26,6 @@ dependencies = [
 
 [project.scripts]
 lean-sentinel = "lean_sentinel.cli:main"
+
+[tool.vercel]
+entrypoint = "api/index.py"
