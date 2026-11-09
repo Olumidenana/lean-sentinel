@@ -251,11 +251,83 @@ async function runAudit() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: code, filename: "algorithm.py" })
         });
+        if (!resp.ok) throw new Error("API status " + resp.status);
         const data = await resp.json();
         renderAuditResults(data);
     } catch (err) {
-        console.error("Audit failed", err);
+        console.warn("Backend API offline, using client-side fallback engine:", err);
+        const fallbackData = clientSideAuditFallback(code);
+        renderAuditResults(fallbackData);
     }
+}
+
+function clientSideAuditFallback(code) {
+    const findings = [];
+    let score = 100;
+    
+    if (code.includes("AddEquity(") && !code.includes("Resolution.")) {
+        findings.push({
+            rule_id: "QC-006",
+            rule_name: "Missing Resolution Specification",
+            severity: "LOW",
+            message: "AddEquity() subscribed without explicit Resolution argument.",
+            remediation: "Explicitly pass Resolution.Daily or Resolution.Minute."
+        });
+        score -= 8;
+    }
+    if (code.includes("SetWarmUp") && !code.includes("IsWarmingUp")) {
+        findings.push({
+            rule_id: "QC-003",
+            rule_name: "Missing IsWarmingUp Guard in OnData",
+            severity: "HIGH",
+            message: "SetWarmUp() declared without OnData early exit guard.",
+            remediation: "Add `if self.IsWarmingUp: return` in OnData."
+        });
+        score -= 20;
+    }
+    if (code.includes("MarketOrder(")) {
+        findings.push({
+            rule_id: "QC-004",
+            rule_name: "Unsafe Naked Market Order Execution",
+            severity: "MEDIUM",
+            message: "Direct MarketOrder() invocation found. Bypasses portfolio sizing.",
+            remediation: "Prefer self.SetHoldings() or Execution Models."
+        });
+        score -= 12;
+    }
+    if (code.includes(".Current.Value") && !code.includes(".IsReady")) {
+        findings.push({
+            rule_id: "QC-002",
+            rule_name: "Unchecked Indicator Readiness",
+            severity: "HIGH",
+            message: "Indicator values read without .IsReady check.",
+            remediation: "Wrap reads in `if not self.indicator.IsReady: return`."
+        });
+        score -= 15;
+    }
+    if (!code.includes("RiskManagement") && !code.includes("MaximumDrawdown")) {
+        findings.push({
+            rule_id: "QC-008",
+            rule_name: "Missing Risk Management Model",
+            severity: "MEDIUM",
+            message: "No explicit Risk Management model registered.",
+            remediation: "Register self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.05))."
+        });
+        score -= 10;
+    }
+
+    const crit = findings.filter(f => f.severity === 'CRITICAL').length;
+    const high = findings.filter(f => f.severity === 'HIGH').length;
+    const med = findings.filter(f => f.severity === 'MEDIUM').length;
+    const low = findings.filter(f => f.severity === 'LOW').length;
+
+    return {
+        readiness_score: Math.max(0, score),
+        grade: score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F',
+        total_findings: findings.length,
+        severity_breakdown: { critical: crit, high: high, medium: med, low: low, info: 0 },
+        findings: findings
+    };
 }
 
 async function runAutoRemediate() {
