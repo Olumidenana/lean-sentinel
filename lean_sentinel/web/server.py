@@ -153,6 +153,29 @@ def simulate_backtest(req: AuditRequest) -> Dict[str, Any]:
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    @app.get("/")
-    def serve_index():
-        return FileResponse(STATIC_DIR / "index.html")
+@app.get("/")
+def serve_index():
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "index.html"
+        if alt_path.exists():
+            return FileResponse(alt_path)
+    return FileResponse(index_path)
+
+@app.get("/styles.css")
+def serve_css():
+    css_path = STATIC_DIR / "styles.css"
+    if not css_path.exists():
+        alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "styles.css"
+        if alt_path.exists():
+            return FileResponse(alt_path, media_type="text/css")
+    return FileResponse(css_path, media_type="text/css")
+
+@app.get("/app.js")
+def serve_js():
+    js_path = STATIC_DIR / "app.js"
+    if not js_path.exists():
+        alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "app.js"
+        if alt_path.exists():
+            return FileResponse(alt_path, media_type="application/javascript")
+    return FileResponse(js_path, media_type="application/javascript")
