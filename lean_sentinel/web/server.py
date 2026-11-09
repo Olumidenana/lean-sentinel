@@ -149,18 +149,25 @@ def simulate_backtest(req: AuditRequest) -> Dict[str, Any]:
     }
 
 
-# Mount static assets
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+from fastapi.responses import HTMLResponse, Response
 
-@app.get("/")
+# Mount static assets safely
+try:
+    if STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+except Exception:
+    pass
+
+@app.get("/", response_class=HTMLResponse)
 def serve_index():
     index_path = STATIC_DIR / "index.html"
     if not index_path.exists():
         alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "index.html"
         if alt_path.exists():
-            return FileResponse(alt_path)
-    return FileResponse(index_path)
+            index_path = alt_path
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>LeanSentinel Studio</h1>")
 
 @app.get("/styles.css")
 def serve_css():
@@ -168,8 +175,10 @@ def serve_css():
     if not css_path.exists():
         alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "styles.css"
         if alt_path.exists():
-            return FileResponse(alt_path, media_type="text/css")
-    return FileResponse(css_path, media_type="text/css")
+            css_path = alt_path
+    if css_path.exists():
+        return Response(content=css_path.read_text(encoding="utf-8"), media_type="text/css")
+    return Response(content="", media_type="text/css")
 
 @app.get("/app.js")
 def serve_js():
@@ -177,5 +186,7 @@ def serve_js():
     if not js_path.exists():
         alt_path = Path(__file__).resolve().parent.parent.parent / "public" / "app.js"
         if alt_path.exists():
-            return FileResponse(alt_path, media_type="application/javascript")
-    return FileResponse(js_path, media_type="application/javascript")
+            js_path = alt_path
+    if js_path.exists():
+        return Response(content=js_path.read_text(encoding="utf-8"), media_type="application/javascript")
+    return Response(content="", media_type="application/javascript")

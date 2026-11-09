@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
 
-# Add project root to sys.path for Vercel Serverless environment
-ROOT_DIR = Path(__file__).parent.parent.resolve()
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+CURRENT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = CURRENT_DIR.parent
+
+for p in [CURRENT_DIR, ROOT_DIR]:
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 from lean_sentinel.web.server import app
-
-# Vercel entrypoint

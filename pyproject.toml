@@ -22,10 +22,8 @@ dependencies = [
     "numpy>=1.20.0",
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
+    "aiofiles>=23.0.0",
 ]
 
 [project.scripts]
 lean-sentinel = "lean_sentinel.cli:main"
-
-[tool.vercel]
-entrypoint = "main:app"
