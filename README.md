@@ -2,6 +2,7 @@
 
 > **Autonomous AI Agent Supervisor & Anti-Hallucination Guardrails for QuantConnect LEAN**
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FOlumidenana%2Flean-sentinel)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![QuantConnect LEAN](https://img.shields.io/badge/QuantConnect-LEAN%20Engine-amber.svg)](https://www.quantconnect.com)
