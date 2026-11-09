@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STATIC_DIR = Path(__file__).parent / "static"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 analyzer = LeanASTAnalyzer()
 mock_server = MockQuantConnectMCPServer()
 
