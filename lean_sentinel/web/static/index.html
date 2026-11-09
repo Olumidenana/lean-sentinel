@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeanSentinel | QuantConnect AI Agent Supervisor & Linter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        qc: {
+                            dark: '#0c0f17',
+                            card: '#141a29',
+                            border: '#1f293d',
+                            accent: '#f59e0b',
+                            blue: '#3b82f6',
+                            emerald: '#10b981',
+                            red: '#ef4444',
+                            text: '#f3f4f6',
+                            muted: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-qc-dark text-qc-text min-h-screen font-sans flex flex-col antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-qc-border bg-[#0f1422] px-6 py-3.5 flex items-center justify-between sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-amber-400 via-amber-200 to-yellow-500 bg-clip-text text-transparent">
+                        LeanSentinel
+                    </span>
+                    <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-mono font-medium">v1.0.0</span>
+                    <span class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
+                        <i data-lucide="cpu" class="w-3 h-3"></i> QC Remote MCP
+                    </span>
+                </div>
+                <p class="text-xs text-qc-muted hidden sm:block">Autonomous AI Agent Guardrails & DSR Overfitting Engine for QuantConnect LEAN</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 text-xs bg-qc-card border border-qc-border px-3 py-1.5 rounded-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-qc-muted">Engine:</span>
+                <span class="font-mono text-emerald-400 font-semibold">LEAN 2.5+</span>
+            </div>
+            <a href="https://github.com/Olumidenana/lean-sentinel" target="_blank" class="flex items-center space-x-1.5 text-xs bg-qc-card hover:bg-qc-border border border-qc-border px-3 py-1.5 rounded-md transition text-qc-text">
+                <i data-lucide="github" class="w-4 h-4"></i>
+                <span class="hidden md:inline">GitHub</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
+
+        <!-- Left Column: Code Editor & Strategy Synthesizer -->
+        <section class="lg:col-span-6 border-r border-qc-border flex flex-col h-full bg-[#111624]">
+            <!-- Editor Controls Header -->
+            <div class="p-3 border-b border-qc-border flex flex-wrap items-center justify-between gap-2 bg-[#131929]">
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-qc-muted">Template:</label>
+                    <select id="templateSelector" class="bg-qc-card border border-qc-border text-xs rounded px-2.5 py-1 text-qc-text focus:outline-none focus:border-amber-400">
+                        <option value="vulnerable">🚨 Vulnerable AI-Generated Algorithm (Lookahead + Unwarmed)</option>
+                        <option value="momentum">💎 Institutional Cross-Sectional Momentum (5-Component)</option>
+                        <option value="mean_reversion">⚡ Multi-Asset Bollinger & RSI Mean Reversion</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button id="btnAutoRemediate" class="flex items-center space-x-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded transition font-medium">
+                        <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+                        <span>Auto-Fix Code</span>
+                    </button>
+                    <button id="btnSynthesize" class="flex items-center space-x-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 px-2.5 py-1 rounded transition font-medium">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Synthesize Framework</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Editor Area -->
+            <div class="flex-1 relative font-mono text-xs overflow-hidden flex flex-col">
+                <textarea id="codeEditor" spellcheck="false" class="w-full flex-1 bg-[#0b0e17] text-gray-200 p-4 font-mono text-[13px] leading-relaxed resize-none focus:outline-none selection:bg-amber-500/30 border-none" placeholder="# Paste your QuantConnect Python Algorithm here..."></textarea>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="p-3 border-t border-qc-border bg-[#131929] flex items-center justify-between">
+                <div class="text-xs text-qc-muted flex items-center space-x-2">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>AST parser scans 10 institutional QuantConnect anti-patterns.</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="btnAudit" class="flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded-md text-xs transition shadow-lg shadow-amber-500/10">
+                        <i data-lucide="scan-line" class="w-4 h-4"></i>
+                        <span>Run Static Audit</span>
+                    </button>
+                    <button id="btnSimulate" class="flex items-center space-x-1.5 bg-qc-card hover:bg-qc-border border border-qc-border text-qc-text font-semibold px-4 py-2 rounded-md text-xs transition">
+                        <i data-lucide="play" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Simulate & DSR</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Audit Results, DSR Tearsheet & Charts -->
+        <section class="lg:col-span-6 flex flex-col h-full bg-[#0d111c] overflow-y-auto">
+            
+            <!-- Summary Score Header -->
+            <div class="p-5 border-b border-qc-border bg-gradient-to-b from-[#131a2b] to-[#0d111c]">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-qc-muted">LEAN Readiness Index</span>
+                        <div class="flex items-baseline space-x-3 mt-1">
+                            <span id="readinessScore" class="text-4xl font-extrabold text-amber-400 font-mono">--</span>
+                            <span class="text-sm text-qc-muted">/ 100</span>
+                            <span id="gradeBadge" class="text-xs font-bold px-2.5 py-0.5 rounded font-mono bg-qc-card border border-qc-border text-qc-muted">Grade --</span>
+                        </div>
+                    </div>
+
+                    <!-- Deflated Sharpe & Overfitting Meter -->
+                    <div class="text-right">
+                        <span class="text-xs font-bold uppercase tracking-wider text-qc-muted">Overfitting Risk (DSR)</span>
+                        <div class="mt-1 flex items-center justify-end space-x-2">
+                            <span id="dsrBadge" class="text-xs font-mono font-bold px-2.5 py-1 rounded bg-qc-card border border-qc-border text-qc-muted">NOT EVALUATED</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Severity breakdown pill counts -->
+                <div class="grid grid-cols-4 gap-2 mt-4">
+                    <div class="bg-qc-card border border-qc-border rounded-lg p-2 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-red-400">Critical</span>
+                        <div id="countCritical" class="text-lg font-mono font-bold text-red-400 mt-0.5">0</div>
+                    </div>
+                    <div class="bg-qc-card border border-qc-border rounded-lg p-2 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">High</span>
+                        <div id="countHigh" class="text-lg font-mono font-bold text-amber-400 mt-0.5">0</div>
+                    </div>
+                    <div class="bg-qc-card border border-qc-border rounded-lg p-2 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-yellow-300">Medium</span>
+                        <div id="countMedium" class="text-lg font-mono font-bold text-yellow-300 mt-0.5">0</div>
+                    </div>
+                    <div class="bg-qc-card border border-qc-border rounded-lg p-2 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400">Low / Info</span>
+                        <div id="countLow" class="text-lg font-mono font-bold text-blue-400 mt-0.5">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation: Findings vs Performance & DSR -->
+            <div class="flex border-b border-qc-border px-5 bg-[#0f1422]">
+                <button id="tabBtnFindings" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-amber-400 text-amber-400 flex items-center space-x-1.5">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                    <span>AST Findings (<span id="findingsTabCount">0</span>)</span>
+                </button>
+                <button id="tabBtnMetrics" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-qc-muted hover:text-qc-text flex items-center space-x-1.5 transition">
+                    <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                    <span>Tearsheet & DSR Analysis</span>
+                </button>
+                <button id="tabBtnArchitecture" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-qc-muted hover:text-qc-text flex items-center space-x-1.5 transition">
+                    <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                    <span>5-Component Architecture</span>
+                </button>
+            </div>
+
+            <!-- Tab Content: Findings List -->
+            <div id="tabFindings" class="p-5 space-y-3 flex-1 overflow-y-auto">
+                <div id="emptyFindingsMessage" class="text-center py-12 text-qc-muted">
+                    <i data-lucide="check-circle-2" class="w-12 h-12 text-emerald-400/50 mx-auto mb-3"></i>
+                    <p class="text-sm font-medium">Click "Run Static Audit" to parse and validate code.</p>
+                </div>
+                <div id="findingsContainer" class="space-y-3 hidden"></div>
+            </div>
+
+            <!-- Tab Content: Performance Metrics & DSR -->
+            <div id="tabMetrics" class="p-5 space-y-5 hidden flex-1 overflow-y-auto">
+                <!-- Institutional Performance KPI Grid -->
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-qc-muted mb-3 flex items-center space-x-1.5">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Institutional Quantitative Tearsheet</span>
+                    </h3>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">Sharpe Ratio</span>
+                            <div id="statSharpe" class="text-xl font-mono font-bold text-amber-400 mt-0.5">--</div>
+                        </div>
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">Sortino Ratio</span>
+                            <div id="statSortino" class="text-xl font-mono font-bold text-emerald-400 mt-0.5">--</div>
+                        </div>
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">Calmar Ratio</span>
+                            <div id="statCalmar" class="text-xl font-mono font-bold text-qc-text mt-0.5">--</div>
+                        </div>
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">Max Drawdown</span>
+                            <div id="statMaxDD" class="text-xl font-mono font-bold text-red-400 mt-0.5">--</div>
+                        </div>
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">Win Rate</span>
+                            <div id="statWinRate" class="text-xl font-mono font-bold text-emerald-400 mt-0.5">--</div>
+                        </div>
+                        <div class="bg-qc-card border border-qc-border p-3 rounded-lg">
+                            <span class="text-[11px] text-qc-muted">VaR (95% Daily)</span>
+                            <div id="statVaR" class="text-xl font-mono font-bold text-yellow-400 mt-0.5">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deflated Sharpe Ratio (DSR) Box -->
+                <div class="bg-qc-card border border-qc-border rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
+                            <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+                            <span>Deflated Sharpe Ratio (Lopez de Prado)</span>
+                        </h4>
+                        <span id="dsrProbLabel" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300">DSR: --</span>
+                    </div>
+                    <p class="text-xs text-qc-muted leading-relaxed mb-3">
+                        Adjusts observed Sharpe for data snooping across <span id="dsrTrialsCount" class="text-qc-text font-bold">25</span> candidate iterations. Statistically rules out lucky backtests.
+                    </p>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div class="bg-[#0b0e17] p-2 rounded border border-qc-border">
+                            <span class="text-qc-muted text-[10px] block">Expected Max Null Sharpe:</span>
+                            <span id="statExpectedMax" class="font-bold text-qc-text">--</span>
+                        </div>
+                        <div class="bg-[#0b0e17] p-2 rounded border border-qc-border">
+                            <span class="text-qc-muted text-[10px] block">Haircut Sharpe (Post-Trial Penalty):</span>
+                            <span id="statHaircutSharpe" class="font-bold text-amber-400">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equity Curve Simulation Chart -->
+                <div class="bg-qc-card border border-qc-border rounded-xl p-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-qc-muted mb-2 flex items-center space-x-1.5">
+                        <i data-lucide="line-chart" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>Simulated Portfolio Equity Curve ($100k Base)</span>
+                    </h4>
+                    <div class="h-44 w-full">
+                        <canvas id="equityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: 5-Component Architecture Diagram -->
+            <div id="tabArchitecture" class="p-5 space-y-4 hidden flex-1 overflow-y-auto">
+                <div class="bg-qc-card border border-qc-border rounded-xl p-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">QuantConnect Algorithm Framework Model</h4>
+                    <p class="text-xs text-qc-muted leading-relaxed mb-4">
+                        Modern institutional LEAN architecture rejects monolithic <code class="text-amber-300">OnData()</code> scripts in favor of 5 independent, composable components:
+                    </p>
+                    <div class="space-y-3 font-mono text-xs">
+                        <div class="border border-qc-border bg-[#0b0e17] p-3 rounded-lg flex items-start space-x-3">
+                            <span class="w-6 h-6 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">1</span>
+                            <div>
+                                <span class="font-bold text-blue-400">Universe Selection Model</span>
+                                <p class="text-qc-muted text-[11px] mt-0.5">Filters thousands of assets down to a tradeable candidate basket based on coarse/fine fundamentals or ETF holdings.</p>
+                            </div>
+                        </div>
+                        <div class="border border-qc-border bg-[#0b0e17] p-3 rounded-lg flex items-start space-x-3">
+                            <span class="w-6 h-6 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">2</span>
+                            <div>
+                                <span class="font-bold text-amber-400">Alpha Creation Model</span>
+                                <p class="text-qc-muted text-[11px] mt-0.5">Analyzes market events and emits normalized <code class="text-amber-300">Insight</code> predictions (Direction, Duration, Magnitude, Confidence).</p>
+                            </div>
+                        </div>
+                        <div class="border border-qc-border bg-[#0b0e17] p-3 rounded-lg flex items-start space-x-3">
+                            <span class="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">3</span>
+                            <div>
+                                <span class="font-bold text-emerald-400">Portfolio Construction Model</span>
+                                <p class="text-qc-muted text-[11px] mt-0.5">Aggregates insights and determines target portfolio weights (Equal Weighting, Mean-Variance, Risk Parity).</p>
+                            </div>
+                        </div>
+                        <div class="border border-qc-border bg-[#0b0e17] p-3 rounded-lg flex items-start space-x-3">
+                            <span class="w-6 h-6 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">4</span>
+                            <div>
+                                <span class="font-bold text-purple-400">Execution Model</span>
+                                <p class="text-qc-muted text-[11px] mt-0.5">Executes target allocations while minimizing market impact and slippage (VWAP, TWAP, Immediate).</p>
+                            </div>
+                        </div>
+                        <div class="border border-qc-border bg-[#0b0e17] p-3 rounded-lg flex items-start space-x-3">
+                            <span class="w-6 h-6 rounded bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs shrink-0">5</span>
+                            <div>
+                                <span class="font-bold text-red-400">Risk Management Model</span>
+                                <p class="text-qc-muted text-[11px] mt-0.5">Enforces independent real-time circuit breakers (MaximumDrawdownPercentPortfolio, TrailingStops).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-qc-border bg-[#0b0e17] px-6 py-2.5 text-xs text-qc-muted flex items-center justify-between">
+        <div>
+            Built with extreme precision for <strong class="text-qc-text">QuantConnect</strong> &amp; Jared Broad's AI Agent Vision.
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-emerald-400 font-mono">100% Python AST Native</span>
+            <span class="text-qc-muted">•</span>
+            <span class="text-blue-400 font-mono">FastAPI Backend</span>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

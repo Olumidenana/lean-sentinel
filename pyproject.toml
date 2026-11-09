@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lean-sentinel"
+version = "1.0.0"
+description = "Autonomous AI Agent Supervisor & Anti-Hallucination Guardrails for QuantConnect LEAN"
+readme = "README.md"
+authors = [{ name = "Olumide", email = "candidate@quantconnect.com" }]
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "click>=8.0.0",
+    "numpy>=1.20.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+lean-sentinel = "lean_sentinel.cli:main"
