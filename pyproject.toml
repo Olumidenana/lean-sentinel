@@ -8,10 +8,9 @@ version = "1.0.0"
 description = "Autonomous AI Agent Supervisor & Anti-Hallucination Guardrails for QuantConnect LEAN"
 readme = "README.md"
 authors = [{ name = "Olumide", email = "candidate@quantconnect.com" }]
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Office/Business :: Financial :: Investment",
 ]
@@ -27,3 +26,7 @@ dependencies = [
 
 [project.scripts]
 lean-sentinel = "lean_sentinel.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lean_sentinel*"]
+exclude = ["api*", "public*", "tests*", "examples*"]

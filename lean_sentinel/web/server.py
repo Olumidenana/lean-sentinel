@@ -9,8 +9,7 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 from lean_sentinel.linter.analyzer import LeanASTAnalyzer
@@ -149,15 +148,6 @@ def simulate_backtest(req: AuditRequest) -> Dict[str, Any]:
     }
 
 
-from fastapi.responses import HTMLResponse, Response
-
-# Mount static assets safely
-try:
-    if STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-except Exception:
-    pass
-
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     index_path = STATIC_DIR / "index.html"
@@ -169,6 +159,7 @@ def serve_index():
         return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
     return HTMLResponse(content="<h1>LeanSentinel Studio</h1>")
 
+@app.get("/static/styles.css")
 @app.get("/styles.css")
 def serve_css():
     css_path = STATIC_DIR / "styles.css"
@@ -180,6 +171,7 @@ def serve_css():
         return Response(content=css_path.read_text(encoding="utf-8"), media_type="text/css")
     return Response(content="", media_type="text/css")
 
+@app.get("/static/app.js")
 @app.get("/app.js")
 def serve_js():
     js_path = STATIC_DIR / "app.js"
