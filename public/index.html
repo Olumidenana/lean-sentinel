@@ -80,10 +80,20 @@
                 <div class="flex items-center space-x-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-qc-muted">Template:</label>
                     <select id="templateSelector" class="bg-qc-card border border-qc-border text-xs rounded px-2.5 py-1 text-qc-text focus:outline-none focus:border-amber-400">
-                        <option value="vulnerable">🚨 Vulnerable AI Algorithm (Lookahead + Unwarmed + Raw Orders)</option>
-                        <option value="official_qc">💎 Official QuantConnect / LEAN: BasicTemplateAlgorithm</option>
-                        <option value="momentum">🏛️ Institutional 5-Component LEAN Framework (Alpha/Risk/Execution)</option>
-                        <option value="mean_reversion">⚡ Multi-Asset Bollinger & RSI Mean Reversion</option>
+                        <optgroup label="🌟 Official QuantConnect Benchmarks">
+                            <option value="dual_thrust">💎 Dual Thrust Breakout System (Michael Chalek)</option>
+                            <option value="coarse_fine">📊 Coarse &amp; Fine Fundamental Universe Selection</option>
+                            <option value="official_qc">⚡ BasicTemplateAlgorithm (Official Benchmark)</option>
+                        </optgroup>
+                        <optgroup label="⚠️ Community Forum Traps (Vulnerable AI)">
+                            <option value="ema_warmup_trap">🚨 The EMA Indicator Warmup Trap (No IsWarmingUp)</option>
+                            <option value="crypto_naked">🚨 Crypto High-Frequency with Naked MarketOrders</option>
+                            <option value="vulnerable">🚨 Hallucinated LLM Algorithm (Lookahead + Missing Keys)</option>
+                        </optgroup>
+                        <optgroup label="🏛️ Institutional 5-Component Framework">
+                            <option value="momentum">🏛️ Cross-Sectional Alpha Model + Drawdown Risk Model</option>
+                            <option value="mean_reversion">⚡ Multi-Asset Bollinger &amp; RSI Mean Reversion</option>
+                        </optgroup>
                     </select>
                 </div>
 

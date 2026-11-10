@@ -1,5 +1,188 @@
 // Templates library
 const TEMPLATES = {
+    dual_thrust: `# QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
+# Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
+from AlgorithmImports import *
+
+class DualThrustBreakoutAlgorithm(QCAlgorithm):
+    """
+    QuantConnect Benchmark Strategy: Dual Thrust Breakout (Michael Chalek)
+    Computes daily opening range thresholds (K1, K2) and executes intraday trend continuation.
+    """
+    def Initialize(self):
+        self.SetStartDate(2022, 1, 1)
+        self.SetCash(100000)
+        self.SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin)
+
+        self.spy = self.AddEquity("SPY", Resolution.Hour).Symbol
+        self.n_days = 4
+        self.k1 = 0.5
+        self.k2 = 0.5
+        self.upper_trigger = None
+        self.lower_trigger = None
+
+        self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.05))
+
+        self.Schedule.On(
+            self.DateRules.EveryDay(self.spy),
+            self.TimeRules.AfterMarketOpen(self.spy, 5),
+            self.CalculateThresholds
+        )
+
+    def CalculateThresholds(self):
+        history = self.History(self.spy, self.n_days + 1, Resolution.Daily)
+        if history.empty or len(history) < self.n_days:
+            return
+
+        highs = history['high']
+        lows = history['low']
+        closes = history['close']
+
+        hh = max(highs[:-1])
+        lc = min(closes[:-1])
+        hc = max(closes[:-1])
+        ll = min(lows[:-1])
+
+        day_range = max(hh - lc, hc - ll)
+        today_open = float(history['open'].iloc[-1])
+
+        self.upper_trigger = today_open + self.k1 * day_range
+        self.lower_trigger = today_open - self.k2 * day_range
+
+    def OnData(self, data: Slice):
+        if not data.ContainsKey(self.spy) or data[self.spy] is None:
+            return
+        if self.upper_trigger is None or self.lower_trigger is None:
+            return
+
+        current_price = data[self.spy].Price
+        is_invested = self.Portfolio[self.spy].Invested
+
+        if current_price > self.upper_trigger:
+            if not is_invested or self.Portfolio[self.spy].IsShort:
+                self.SetHoldings(self.spy, 1.0)
+        elif current_price < self.lower_trigger:
+            if not is_invested or self.Portfolio[self.spy].IsLong:
+                self.Liquidate(self.spy)
+`,
+
+    coarse_fine: `# QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
+# Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
+from AlgorithmImports import *
+
+class CoarseFineFundamentalAlgorithm(QCAlgorithm):
+    """
+    QuantConnect Benchmark: Dynamic Stock Selection via Morningstar Fundamentals.
+    Coarse filter: Dollar volume liquidity & share price.
+    Fine filter: Value factor (lowest P/E ratio) & quality balance sheets.
+    """
+    def Initialize(self):
+        self.SetStartDate(2021, 1, 1)
+        self.SetCash(100000)
+        self.SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin)
+
+        self.UniverseSettings.Resolution = Resolution.Daily
+        self.AddUniverse(self.CoarseSelectionFunction, self.FineSelectionFunction)
+        self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.06))
+
+        self.symbols = []
+        self.last_rebalance = self.Time
+
+    def CoarseSelectionFunction(self, coarse: List[CoarseFundamental]) -> List[Symbol]:
+        filtered = [x for x in coarse if x.HasFundamentalData and x.Price > 10 and x.DollarVolume > 20000000]
+        sorted_by_volume = sorted(filtered, key=lambda x: x.DollarVolume, reverse=True)
+        return [x.Symbol for x in sorted_by_volume[:100]]
+
+    def FineSelectionFunction(self, fine: List[FineFundamental]) -> List[Symbol]:
+        valid_pe = [x for x in fine if x.ValuationRatios.PERatio > 0]
+        sorted_by_pe = sorted(valid_pe, key=lambda x: x.ValuationRatios.PERatio)
+        self.symbols = [x.Symbol for x in sorted_by_pe[:10]]
+        return self.symbols
+
+    def OnData(self, data: Slice):
+        if (self.Time - self.last_rebalance).days < 30 or not self.symbols:
+            return
+
+        target_weight = 1.0 / len(self.symbols)
+        for symbol in self.symbols:
+            if data.ContainsKey(symbol) and data[symbol] is not None:
+                self.SetHoldings(symbol, target_weight)
+
+        self.last_rebalance = self.Time
+`,
+
+    ema_warmup_trap: `# QuantConnect Community Forum Case Study #1: The Indicator Warmup Trap
+from AlgorithmImports import *
+
+class EmaWarmupTrapAlgorithm(QCAlgorithm):
+    """
+    Common QuantConnect Forum Trap:
+    - Calls SetWarmUp(50) but forgets if self.IsWarmingUp: return in OnData().
+    - Trades immediately during historical warmup bars.
+    - Reads self.ema.Current.Value before checking self.ema.IsReady.
+    - Subscribes with AddEquity() without explicit Resolution.
+    - Uses naked MarketOrder with hardcoded share counts.
+    """
+    def Initialize(self):
+        self.SetStartDate(2023, 1, 1)
+        self.SetCash(100000)
+
+        # Defect 1: Missing explicit Resolution
+        self.AddEquity("TSLA")
+
+        # Defect 2: Indicator created
+        self.ema = self.EMA("TSLA", 50)
+
+        # Defect 3: Warmup declared without OnData guard
+        self.SetWarmUp(50)
+
+    def OnData(self, data: Slice):
+        # Defect 4: Missing if self.IsWarmingUp: return guard
+        val = self.ema.Current.Value
+        tsla_bar = data["TSLA"]
+
+        # Defect 5: Naked MarketOrder bypasses portfolio risk
+        if tsla_bar.Close > val:
+            self.MarketOrder("TSLA", 50)
+        else:
+            self.MarketOrder("TSLA", -50)
+`,
+
+    crypto_naked: `# QuantConnect Community Forum Case Study #2: Crypto Unsafe Execution
+from AlgorithmImports import *
+
+class CryptoUnsafeExecutionAlgorithm(QCAlgorithm):
+    """
+    Common QuantConnect Forum Trap:
+    - Subscribes to high-volatility crypto (BTCUSD, ETHUSD) without explicit Resolution.
+    - Executes raw MarketOrders based on naive momentum without checking cash/margin.
+    - No RiskManagementModel registered (vulnerable to liquidation spikes).
+    """
+    def Initialize(self):
+        self.SetStartDate(2023, 1, 1)
+        self.SetCash(50000)
+        self.SetBrokerageModel(BrokerageName.Coinbase, AccountType.Cash)
+
+        # Defect 1: Missing explicit Resolution
+        self.AddCrypto("BTCUSD")
+        self.AddCrypto("ETHUSD")
+
+        self.fast = self.EMA("BTCUSD", 12)
+        self.slow = self.EMA("BTCUSD", 26)
+        self.SetWarmUp(30)
+
+    def OnData(self, data: Slice):
+        # Defect 2: No warmup guard
+        btc_bar = data["BTCUSD"]
+
+        # Defect 3: No .IsReady check
+        if self.fast.Current.Value > self.slow.Current.Value:
+            # Defect 4: Naked MarketOrder bypassing portfolio weighting
+            self.MarketOrder("BTCUSD", 1)
+        else:
+            self.MarketOrder("BTCUSD", -1)
+`,
+
     vulnerable: `# region imports
 from AlgorithmImports import *
 # endregion
