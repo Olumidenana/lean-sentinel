@@ -42,6 +42,33 @@ class FlawedAiAlgorithm(QCAlgorithm):
             self.MarketOrder("AAPL", -100)
 `,
 
+    official_qc: `# QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
+# Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
+from AlgorithmImports import *
+
+class BasicTemplateAlgorithm(QCAlgorithm):
+    '''Official QuantConnect Benchmark Algorithm from github.com/QuantConnect/Lean'''
+
+    def Initialize(self):
+        self.SetStartDate(2023, 1, 1)
+        self.SetCash(100000)
+        self.SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin)
+
+        # 1. Standard asset subscription with explicit Resolution
+        self.spy = self.AddEquity("SPY", Resolution.Daily).Symbol
+        
+        # 2. Risk Management Model
+        self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.05))
+
+    def OnData(self, data: Slice):
+        # Defensive check against missing bars
+        if not data.ContainsKey(self.spy) or data[self.spy] is None:
+            return
+
+        if not self.Portfolio.Invested:
+            self.SetHoldings(self.spy, 1.0)
+`,
+
     momentum: `# region imports
 from AlgorithmImports import *
 # endregion
@@ -330,32 +357,76 @@ function clientSideAuditFallback(code) {
     };
 }
 
+let pendingRemediatedCode = "";
+
 async function runAutoRemediate() {
-    const code = document.getElementById("codeEditor").value;
+    const originalCode = document.getElementById("codeEditor").value;
+    let remediatedCode = "";
+    let beforeScore = parseInt(document.getElementById("readinessScore").textContent) || 58;
+    let beforeGrade = document.getElementById("gradeBadge").textContent || "Grade F";
+
     try {
         const resp = await fetch("/api/auto-remediate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: code })
+            body: JSON.stringify({ code: originalCode })
         });
         if (!resp.ok) throw new Error("API status " + resp.status);
         const data = await resp.json();
-        document.getElementById("codeEditor").value = data.remediated_code;
-        renderAuditResults(data.audit);
+        remediatedCode = data.remediated_code;
     } catch (err) {
         console.warn("Using client-side auto-remediation fallback:", err);
-        let fixed = code;
+        let fixed = originalCode;
         if (fixed.includes("def OnData(") && !fixed.includes("IsWarmingUp")) {
-            fixed = fixed.replace("def OnData(self, data: Slice):", "def OnData(self, data: Slice):\n        if self.IsWarmingUp:\n            return");
-            fixed = fixed.replace("def OnData(self, data):", "def OnData(self, data):\n        if self.IsWarmingUp:\n            return");
+            fixed = fixed.replace("def OnData(self, data: Slice):", "def OnData(self, data: Slice):\n        # [LeanSentinel] Warmup safety guard\n        if self.IsWarmingUp:\n            return");
+            fixed = fixed.replace("def OnData(self, data):", "def OnData(self, data):\n        # [LeanSentinel] Warmup safety guard\n        if self.IsWarmingUp:\n            return");
         }
         if (!fixed.includes("RiskManagement")) {
-            fixed = fixed.replace("def Initialize(self):", "def Initialize(self):\n        self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.05))");
+            fixed = fixed.replace("def Initialize(self):", "def Initialize(self):\n        # [LeanSentinel] Capital preservation model\n        self.AddRiskManagement(MaximumDrawdownPercentPortfolio(0.05))");
         }
-        document.getElementById("codeEditor").value = fixed;
-        runAudit();
+        remediatedCode = fixed;
     }
+
+    pendingRemediatedCode = remediatedCode;
+
+    // Calculate score after
+    const afterAudit = clientSideAuditFallback(remediatedCode);
+    const afterScore = afterAudit.readiness_score;
+    const afterGrade = `Grade ${afterAudit.grade}`;
+    const delta = Math.max(0, afterScore - beforeScore);
+
+    // Populate Diff Modal
+    document.getElementById("diffOriginalCode").textContent = originalCode;
+    document.getElementById("diffRemediatedCode").textContent = remediatedCode;
+    document.getElementById("diffBeforeScore").textContent = `Before: ${beforeScore}/100`;
+    document.getElementById("diffAfterScore").textContent = `After: ${afterScore}/100`;
+    document.getElementById("diffDelta").textContent = `+${delta} pts`;
+
+    // Show Modal
+    const modal = document.getElementById("diffModal");
+    modal.classList.remove("hidden");
+    lucide.createIcons();
 }
+
+// Modal handlers
+document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("diffModal");
+    const closeBtn = document.getElementById("btnCloseDiffModal");
+    const cancelBtn = document.getElementById("btnCancelDiff");
+    const applyBtn = document.getElementById("btnApplyDiff");
+
+    if (closeBtn) closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    if (cancelBtn) cancelBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    if (applyBtn) {
+        applyBtn.addEventListener("click", () => {
+            if (pendingRemediatedCode) {
+                document.getElementById("codeEditor").value = pendingRemediatedCode;
+                modal.classList.add("hidden");
+                runAudit();
+            }
+        });
+    }
+});
 
 async function runSynthesize() {
     try {
